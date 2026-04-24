@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>hksc表情符號衝刺</title>
+    <title>表情符號大衝刺 - 疏散平衡版</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { 
@@ -34,7 +34,7 @@
 
 <script>
     const SUPABASE_URL = 'https://pvpbzcoozenjfwsfuhpc.supabase.co'; 
-    const SUPABASE_KEY = 'sb_publishable_mUOpOcraYcXbjl3jVlxzpg_h4Fp7tWl'; 
+    const SUPABASE_KEY = '你的_ANON_KEY'; 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const canvas = document.getElementById('gameCanvas');
@@ -48,11 +48,9 @@
     let globalScores = [];
     let isUploading = false;
 
-    const goodEmojis = ['🐈‍⬛', '🎼', '🔥', '🎸', '🧑‍🍳', '🎨', '🪡'];
+    const goodEmojis = ['⚡', '💎', '🔥', '🚀', '🌟', '👾', '🍀'];
     const badEmoji = '🚬';
-    
-    // --- 籃子：寬度 65, 視覺高度調小 ---
-    let basket = { width: 65, height: 45, x: 192.5, y: canvas.height - 130, emoji: '📥' };
+    let basket = { width: 80, height: 45, x: 185, y: canvas.height - 130, emoji: '📥' };
 
     async function handleClick() {
         if (currentState === STATE.MENU) {
@@ -73,7 +71,7 @@
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const targetX = (clientX - rect.left) * scaleX - basket.width / 2;
-        basket.x += (targetX - basket.x) * 0.8; 
+        basket.x += (targetX - basket.x) * 0.85; 
         basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
     }
 
@@ -84,16 +82,22 @@
     }, { passive: false });
 
     function spawnItem() {
-        const speedBase = (7 + (score / 150)) * (canvas.height / 750); 
+        // 速度邏輯：保持漸進加速
+        let speedFactor = score < 100 ? (score / 250) : (score / 150);
+        const speedBase = (5 + speedFactor) * (canvas.height / 750); 
+        
         let x, speed, isBad, attempts = 0, isSafe = false;
 
-        while (!isSafe && attempts < 40) {
+        while (!isSafe && attempts < 50) {
             isSafe = true;
-            x = 40 + Math.random() * (canvas.width - 80);
-            speed = speedBase + Math.random() * 3;
-            isBad = Math.random() < Math.min(0.4, 0.2 + (score/1500));
+            x = 50 + Math.random() * (canvas.width - 100);
+            speed = speedBase + Math.random() * 2;
+            isBad = Math.random() < Math.min(0.35, 0.15 + (score/2500));
+            
             for (let item of items) {
-                if (Math.abs(item.x - x) < 85 && Math.abs(item.y - (-60)) < 180) {
+                // --- 核心優化：加大分散程度 ---
+                // 水平距離需大於 120px，垂直距離需大於 250px
+                if (Math.abs(item.x - x) < 120 && Math.abs(item.y - (-60)) < 250) {
                     isSafe = false; break;
                 }
             }
@@ -105,10 +109,7 @@
     async function uploadScore(val) {
         if (val <= 0) return;
         isUploading = true;
-        try {
-            await supabaseClient.from('leaderboard').insert([{ point: val }]);
-            await fetchTopScores();
-        } catch (e) {}
+        try { await supabaseClient.from('leaderboard').insert([{ point: val }]); await fetchTopScores(); } catch (e) {}
         isUploading = false;
     }
 
@@ -122,23 +123,20 @@
     function update(timestamp) {
         if (currentState !== STATE.PLAYING) return;
 
-        let currentInterval = Math.max(250, 700 - (score * 1.2));
+        // 生成間隔稍微放寬，讓分散效果更明顯
+        let currentInterval = Math.max(350, 1100 - (score * 2));
         if (timestamp - lastItemTime > currentInterval) {
             spawnItem();
             lastItemTime = timestamp;
         }
 
         if (hurtFrames > 0) hurtFrames--;
-
         for (let i = items.length - 1; i >= 0; i--) {
             const item = items[i];
             item.y += item.speed;
-
-            // --- 精準碰撞檢測：高度也縮小了 ---
             const hitBoxY = item.y + 20; 
             if (hitBoxY > basket.y && hitBoxY < basket.y + basket.height &&
-                item.x > basket.x - 10 && item.x < basket.x + basket.width + 10) {
-                
+                item.x > basket.x - 15 && item.x < basket.x + basket.width + 15) {
                 if (item.type === 'bad') { lives--; hurtFrames = 30; } 
                 else { score += 10; }
                 items.splice(i, 1);
@@ -155,7 +153,10 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         if (currentState === STATE.MENU) {
-            drawText('hksc emoji衝刺', 'bold 45px Microsoft JhengHei', '#00ffff', 180);
+            drawText('平衡挑戰', 'bold 45px Microsoft JhengHei', '#00ffff', 140);
+            ctx.fillStyle = '#ffeb3b'; ctx.font = 'bold 18px Microsoft JhengHei';
+            ctx.textAlign = 'center'; ctx.fillText('⚠️ 規則：接住寶物，避開 🚬 表情！', canvas.width / 2, 190);
+
             ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
             ctx.beginPath(); ctx.roundRect(50, 240, 350, 220, 15); ctx.fill();
             ctx.fillStyle = "#00ffff"; ctx.font = "bold 20px Microsoft JhengHei";
@@ -165,13 +166,12 @@
                 ctx.textAlign = "left"; ctx.fillText(`TOP ${i+1}`, 100, 320 + i * 30);
                 ctx.textAlign = "right"; ctx.fillText(`${s}`, 350, 320 + i * 30);
             });
-            drawText('START', 'bold 28px Microsoft JhengHei', '#00ffff', 550);
+            drawText('點擊螢幕 開始遊戲', 'bold 28px Microsoft JhengHei', '#00ffff', 550);
+
         } else if (currentState === STATE.PLAYING) {
             ctx.save();
             if (hurtFrames > 0) { ctx.translate(Math.random()*10-5, 0); ctx.shadowColor = "red"; ctx.shadowBlur = 30; }
-            
-            // --- 籃子：縮小字體以符合 45px 高度 ---
-            ctx.font = '45px Arial'; ctx.textAlign = 'center';
+            ctx.font = '50px Arial'; ctx.textAlign = 'center';
             ctx.fillText(basket.emoji, basket.x + basket.width / 2, basket.y + 40);
             ctx.restore();
 
@@ -180,20 +180,19 @@
                 ctx.fillText(item.emoji, item.x, item.y);
             });
 
-            // UI
             ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, canvas.width, 80);
             ctx.fillStyle = '#00ffff'; ctx.font = 'bold 26px Courier New';
             ctx.textAlign = 'left'; ctx.fillText(`SCORE: ${score}`, 25, 50);
             ctx.textAlign = 'right'; ctx.fillText(lives === 2 ? '❤️ ❤️' : '❤️ 🖤', canvas.width - 25, 50);
+
         } else if (currentState === STATE.GAMEOVER) {
             ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            drawText('game over', 'bold 55px Microsoft JhengHei', '#ff1744', 300);
+            drawText('挑戰結束', 'bold 55px Microsoft JhengHei', '#ff1744', 300);
             drawText(`得分: ${score}`, '35px Microsoft JhengHei', '#fff', 380);
-            
             ctx.fillStyle = "#00ffff";
             ctx.beginPath(); ctx.roundRect(125, 460, 200, 60, 10); ctx.fill();
             ctx.fillStyle = "#000"; ctx.font = "bold 24px Microsoft JhengHei"; ctx.textAlign = "center";
-            ctx.fillText("try again", canvas.width/2, 500);
+            ctx.fillText("重新開始", canvas.width/2, 500);
         }
     }
 
